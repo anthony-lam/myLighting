@@ -22,36 +22,43 @@ SPECULAR_EXP = 4
 
 #lighting functions
 def get_lighting(normal, view, ambient, light, areflect, dreflect, sreflect ):
-    ambient = calculate_ambient(light,areflect)
-    diffuse = calculate_diffuse(light, dreflect, normal)
-    specular = calculate_specular(light, sreflect, view, normal)
-    color = [ambient[0]+ diffuse[0] + specular[0],ambient[1]+ diffuse[1] + specular[1],ambient[2]+ diffuse[2] + specular[2]]
-    return limit_color(color)
-
-def calculate_ambient(light, areflect):
-    return multiple_vector(light[1],areflect)
-
-def calculate_diffuse(light, dreflect, normal):
-    normalize(light[0])
-    normalize(normal)
-    dot = dot_product(light[0], normal)
-    # print(dreflect)
-    return multiple_constant(multiple_vector(light[1],dreflect),dot)
-
-def calculate_specular(light, sreflect, view, normal):
+    color = [0, 0, 0]
     normalize(light[0])
     normalize(view)
     normalize(normal)
-    dot = dot_product(normal, light[0])
-    result = multiple_constant(multiple_constant(normal,2), dot)
-    result = [result[0] - light[0][0],result[1] - light[0][1],result[2] - light[0][2]]
-    dot = dot_product(result, view)
-    return multiple_constant(multiple_vector(light[1],sreflect),dot)
+    a = calculate_ambient(ambient,areflect)
+    d = calculate_diffuse(light,dreflect,normal)
+    s = calculate_specular(light,sreflect,view,normal)
+    color = [a[0] + d[0] + s[0],a[1] + d[1] + s[1],a[2] + d[2] + s[2]]
+    return limit_color(color)
+
+def calculate_ambient(ambient, areflect):
+    a = [0,0,0]
+    for i in range(3):
+        a[i] = ambient[i] * areflect[i]
+    return a
+
+def calculate_diffuse(light, dreflect, normal):
+    a = [0,0,0]
+    for i in range(3):
+        a[i] = light[1][i] * dreflect[i] * (dot_product(normal, light[0]))
+    return a
+
+def calculate_specular(light, sreflect, view, normal):
+    a = [0,0,0]
+    for i in range(3):
+        stuff = dot_product(subtract(multiple_constant(multiple_constant(normal, 2), (dot_product(normal, light[0]))) , light[0]) , view)
+        if stuff < 0 and SPECULAR_EXP % 2 is 0:
+            stuff = -1 * math.pow( stuff, SPECULAR_EXP)
+        else:
+            stuff = math.pow(stuff, SPECULAR_EXP)
+        a[i] = light[1][i] * sreflect[i] * stuff
+    return a
 
 def multiple_constant(light, constant):
-    # print(light[1][0])
-    # print(constant)
     return [light[0] * constant, light[1] * constant, light[2] * constant]
+def subtract(a,b):
+    return [a[0] - b[0], a[1] - b[1], a[2] - a[2]]
 def multiple_vector(light, vector):
     for i in range(3):
       light[i] = light[i] * vector[i]
@@ -63,6 +70,7 @@ def limit_color(color):
         color[i] = 255
       if color[i] < 0:
         color[i] = 0
+      color[i] = int(color[i])
     return color
 
 #vector functions
@@ -73,6 +81,7 @@ def normalize(vector):
                            vector[2] * vector[2])
     for i in range(3):
         vector[i] = vector[i] / magnitude
+    return vector
 
 #Return the dot porduct of a . b
 def dot_product(a, b):
